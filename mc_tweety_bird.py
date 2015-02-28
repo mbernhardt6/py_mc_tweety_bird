@@ -13,7 +13,7 @@ mc_log = "/var/games/minecraft/servers/one/logs/latest.log"
 base_folder = "/home/mc/python/"
 msg_queue = base_folder + "msg_queue"
 death_messages_file = base_folder + "death_messages.txt"
-seen_messages_file = base_folder = "seen_messages"
+seen_messages_file = base_folder + "seen_messages"
 tweet_history = 1000
 tweet_volume = 1
 
