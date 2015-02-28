@@ -1,11 +1,11 @@
 #!/usr/bin/python2.7
-#TODO: Need to find and integrate a Twitter Module
 
 #Python modules
 import argparse
 #Homegrown modules
 import filer
 import logger
+import tweeter
 
 #Variables
 log = "/var/log/mc_tweety_bird.log"
@@ -14,7 +14,7 @@ base_folder = "/home/mc/python/"
 msg_queue = base_folder + "msg_queue"
 death_messages_file = base_folder + "death_messages.txt"
 seen_messages_file = base_folder = "seen_messages"
-tweet_history = 100
+tweet_history = 1000
 tweet_volume = 1
 
 #Parse Command Line Arguments
@@ -31,6 +31,13 @@ parser.add_argument('--tweet_messages',
                     help='Flag to Tweet messages from queue.')
 args = parser.parse_args()
 
+def StringInSet(test_string, test_set):
+  for item in test_set:
+    if item in test_string:
+      return True
+  return False
+
+
 def ReadFileData(target_file_name):
   """Read data from a file ignoring commented out lines.
 
@@ -41,11 +48,14 @@ def ReadFileData(target_file_name):
     Contents of file as a set.
   """
   file_contents = set()
-  target_file = open(target_file_name, 'r')
-  for line in target_file:
-    if line.encode('utf-8')[:1] not '#':
-      file_contents.add(line.encode('utf-8'))
-  target_file.close()
+  try:
+    target_file = open(target_file_name, 'r')
+    for line in target_file:
+      if line.encode('utf-8')[:1] != '#':
+        file_contents.add(line.encode('utf-8').replace('\n', ''))
+    target_file.close()
+  except:
+    logger.logMessage(log, "Unspecified error processing %s" % target_file_name)
   return file_contents
 
 def WriteFileData(target_file_name, file_contents, line_count):
@@ -73,12 +83,18 @@ def ReadDeathMessagesFromLog(target_file_name, queue_file_name, death_messages,
     death_messages: Set of messages to look for.
     seen_messages: Set of messages to filter against to avoid repeats.
   """
-  message_queue = set()
+  msg_count = 0
+  message_queue = ReadFileData(queue_file_name)
   log_messages = ReadFileData(target_file_name)
   for message in log_messages:
-    if (message not in seen_messages) and (message in death_messages):
+    if (not StringInSet(message, seen_messages)
+        and StringInSet(message, death_messages)):
       message_queue.add(message)
-  WriteFileData(queue_file_name, message_queue, 0)
+      seen_messages.add(message)
+      msg_count += 1
+  WriteFileData(queue_file_name, sorted(message_queue), 0)
+  WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
+  logger.logMessage(log, "Read %s messages from log." % msg_count)
 
 def TweetDeathMessages(queue_file_name, num_tweets):
   """Tweet defined number of messages from queue file.
@@ -87,19 +103,22 @@ def TweetDeathMessages(queue_file_name, num_tweets):
     queue_file_name: File to pull tweets from.
     num_tweets: Number of tweets to send in a single instance.
   """
-  tweet_list = ReadFileData(queue_file_name)
+  tweet_list = sorted(ReadFileData(queue_file_name))
   for x in range(0, num_tweets):
-    message = tweet_list.popleft()
-    #TODO: Add actual tweet logic.
+    try:
+      raw_message = tweet_list.pop(0)
+      message = raw_message.split('[Server thread/INFO]:')[1].strip()
+      tweeter.SendTweet(message)
+    except:
+      logger.logMessage(log, "Unable to find message to tweet.")
   WriteFileData(queue_file_name, tweet_list, 0)
 
 if __name__ == "__main__":
   death_messages = ReadFileData(death_messages_file)
   seen_messages = ReadFileData(seen_messages_file)
   if args.read_messages:
-    logger.LogMessage("Reading messages from log to queue.", log)
+    logger.logMessage(log, "Reading messages from log to queue.")
     ReadDeathMessagesFromLog(mc_log, msg_queue, death_messages, seen_messages)
   if args.tweet_messages:
-    logger.LogMessage("Tweeting message(s) from queue.", log)
+    logger.logMessage(log, "Tweeting %s message(s) from queue." % tweet_volume)
     TweetDeathMessages(msg_queue, tweet_volume)
-  WriteFileData(seen_messages_file, seen_messages, tweet_history)

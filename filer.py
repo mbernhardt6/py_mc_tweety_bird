@@ -1,9 +1,12 @@
 def countLines(filename):
-  with open(filename, 'r') as file:
-    for i, l in enumerate(file):
-      pass
-  file.close()
-  return i + 1
+  try:
+    with open(filename, 'r') as file:
+      for i, l in enumerate(file):
+        pass
+    file.close()
+    return i + 1
+  except:
+    return 0
 
 def tailFile(filename, tailCount):
   length = countLines(filename)

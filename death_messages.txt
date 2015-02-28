@@ -1,1 +1,20 @@
 #This file will need to contain parseable data about Minecraft Death Messages
+blew up
+burned to death
+died
+drowned
+fell from a high place
+fell out of the world
+hit the ground too hard
+starved to death
+suffocated in a wall
+tried to swim in lava
+was blown up by
+was fireballed by
+was killed by
+was killed by magic
+was pricked to death
+was pummeled by
+was shot by
+was slain by
+went up in flames
