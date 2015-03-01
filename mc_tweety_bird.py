@@ -2,6 +2,9 @@
 
 #Python modules
 import argparse
+import os
+import sys
+import time
 #Homegrown modules
 import filer
 import logger
@@ -11,7 +14,7 @@ import tweeter
 log = "/var/log/mc_tweety_bird.log"
 mc_log = "/var/games/minecraft/servers/one/logs/latest.log"
 base_folder = "/home/mc/python/"
-msg_queue = base_folder + "msg_queue"
+msg_queue_file = base_folder + "msg_queue"
 death_messages_file = base_folder + "death_messages.txt"
 seen_messages_file = base_folder + "seen_messages"
 tweet_history = 1000
@@ -73,28 +76,38 @@ def WriteFileData(target_file_name, file_contents, line_count):
   if line_count > 0:
     filer.tailFile(target_file_name, line_count)
 
-def ReadDeathMessagesFromLog(target_file_name, queue_file_name, death_messages,
-    seen_messages):
+def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
+    death_messages_file, seen_messages_file):
   """Read Death Messages from MC Log and write out to queue file.
 
   Args:
-    target_file_name: File name to read messages from.
+    log_file_name: File name to read messages from.
     queue_file_name: File name to write messages to for later tweeting.
     death_messages: Set of messages to look for.
     seen_messages: Set of messages to filter against to avoid repeats.
   """
-  msg_count = 0
-  message_queue = ReadFileData(queue_file_name)
-  log_messages = ReadFileData(target_file_name)
-  for message in log_messages:
-    if (not StringInSet(message, seen_messages)
-        and StringInSet(message, death_messages)):
-      message_queue.add(message)
-      seen_messages.add(message)
-      msg_count += 1
-  WriteFileData(queue_file_name, sorted(message_queue), 0)
+  death_messages = ReadFileData(death_messages_file)
+  seen_messages = ReadFileData(seen_messages_file)
+  log_file = open(log_file_name, 'r')
+  try:
+    while 1:
+      msg_count = 0
+      where = log_file.tell()
+      line = log_file.readline()
+      if not line:
+        time.sleep(1)
+        log_file.seek(where)
+      else:
+        if (not StringInSet(line, seen_messages)
+            and StringInSet(line, death_messages)):
+          with open(queue_file_name, 'a') as message_queue:
+            message_queue.write(line)
+          seen_messages.add(line)
+          msg_count += 1
+          logger.logMessage(log, "Read %s message(s) from log." % msg_count)
+  except:
+    logger.logMessage(log, "Error detected while reading messages.")
   WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
-  logger.logMessage(log, "Read %s messages from log." % msg_count)
 
 def TweetDeathMessages(queue_file_name, num_tweets):
   """Tweet defined number of messages from queue file.
@@ -114,11 +127,19 @@ def TweetDeathMessages(queue_file_name, num_tweets):
   WriteFileData(queue_file_name, tweet_list, 0)
 
 if __name__ == "__main__":
-  death_messages = ReadFileData(death_messages_file)
-  seen_messages = ReadFileData(seen_messages_file)
   if args.read_messages:
-    logger.logMessage(log, "Reading messages from log to queue.")
-    ReadDeathMessagesFromLog(mc_log, msg_queue, death_messages, seen_messages)
+    pid = str(os.getpid())
+    pidfile = "/tmp/tweetybird.pid"
+    if os.path.isfile(pidfile):
+      logger.logMessage(log, "%s exists, exiting." % pidfile)
+      sys.exit()
+    else:
+      file(pidfile, 'w').write(pid)
+      logger.logMessage(log, "Reading messages from log to queue.")
+      ReadDeathMessagesFromLog(mc_log, msg_queue_file, death_messages_file,
+          seen_messages_file)
+    os.unlink(pidfile)
   if args.tweet_messages:
-    logger.logMessage(log, "Tweeting %s message(s) from queue." % tweet_volume)
-    TweetDeathMessages(msg_queue, tweet_volume)
+    logger.logMessage(log, "Attempting to Tweet %s message(s) from queue." %
+        tweet_volume)
+    TweetDeathMessages(msg_queue_file, tweet_volume)
