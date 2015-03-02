@@ -17,7 +17,10 @@ base_folder = "/home/mc/python/"
 msg_queue_file = base_folder + "msg_queue"
 death_messages_file = base_folder + "death_messages.txt"
 seen_messages_file = base_folder + "seen_messages"
+#Number of death messages to keep in state
+#Should hold more than you would expect to happen on a single log iteration
 tweet_history = 1000
+#Number of tweets to send during each pass
 tweet_volume = 1
 
 #Parse Command Line Arguments
@@ -34,7 +37,17 @@ parser.add_argument('--tweet_messages',
                     help='Flag to Tweet messages from queue.')
 args = parser.parse_args()
 
+
 def StringInSet(test_string, test_set):
+  """Check if a string contains any string from a set of strings.
+
+  Args:
+    test_string: String to check against.
+    test_set: Set to test against.
+
+  Returns:
+    Boolean if one of set is found or not.
+  """
   for item in test_set:
     if item in test_string:
       return True
@@ -61,6 +74,7 @@ def ReadFileData(target_file_name):
     logger.logMessage(log, "Unspecified error processing %s" % target_file_name)
   return file_contents
 
+
 def WriteFileData(target_file_name, file_contents, line_count):
   """Write data to a file.
 
@@ -76,6 +90,7 @@ def WriteFileData(target_file_name, file_contents, line_count):
   if line_count > 0:
     filer.tailFile(target_file_name, line_count)
 
+
 def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
     death_messages_file, seen_messages_file):
   """Read Death Messages from MC Log and write out to queue file.
@@ -86,12 +101,14 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
     death_messages: Set of messages to look for.
     seen_messages: Set of messages to filter against to avoid repeats.
   """
+  #Read filter and state data
   death_messages = ReadFileData(death_messages_file)
   seen_messages = ReadFileData(seen_messages_file)
+  #Open log file for reading
   log_file = open(log_file_name, 'r')
+  count = 0
   try:
     while 1:
-      msg_count = 0
       where = log_file.tell()
       line = log_file.readline()
       if not line:
@@ -103,11 +120,20 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
           with open(queue_file_name, 'a') as message_queue:
             message_queue.write(line)
           seen_messages.add(line)
-          msg_count += 1
-          logger.logMessage(log, "Read %s message(s) from log." % msg_count)
+          logger.logMessage(log, "Message submitted to tweet queue.")
+      count += 1
+      #Reset read position every hour to catch log rollover
+      if count > 3600:
+        logger.logMessage(log, "Reseting log file location.")
+        where = 0
+        count = 0
+        WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   except:
     logger.logMessage(log, "Error detected while reading messages.")
+  #Write state data and close log file on exit
   WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
+  log_file.close()
+
 
 def TweetDeathMessages(queue_file_name, num_tweets):
   """Tweet defined number of messages from queue file.
@@ -119,27 +145,36 @@ def TweetDeathMessages(queue_file_name, num_tweets):
   tweet_list = sorted(ReadFileData(queue_file_name))
   for x in range(0, num_tweets):
     try:
+      #Read message and remove from queue
       raw_message = tweet_list.pop(0)
+      #Format message for tweet
       message = raw_message.split('[Server thread/INFO]:')[1].strip()
       tweeter.SendTweet(message)
+      logger.logMessage(log, "Update sent to Tweeter.")
     except:
       logger.logMessage(log, "Unable to find message to tweet.")
   WriteFileData(queue_file_name, tweet_list, 0)
 
+
 if __name__ == "__main__":
   if args.read_messages:
+    #read_messages code path
+    #Set pid details
     pid = str(os.getpid())
     pidfile = "/tmp/tweetybird.pid"
+    #Verify script is not already running
     if os.path.isfile(pidfile):
       logger.logMessage(log, "%s exists, exiting." % pidfile)
       sys.exit()
     else:
+      #Set pid file
       file(pidfile, 'w').write(pid)
       logger.logMessage(log, "Reading messages from log to queue.")
       ReadDeathMessagesFromLog(mc_log, msg_queue_file, death_messages_file,
           seen_messages_file)
     os.unlink(pidfile)
   if args.tweet_messages:
+    #tweet_messages code path
     logger.logMessage(log, "Attempting to Tweet %s message(s) from queue." %
         tweet_volume)
     TweetDeathMessages(msg_queue_file, tweet_volume)
