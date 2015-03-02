@@ -125,7 +125,7 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
       #Reset read position every hour to catch log rollover
       if count > 3600:
         logger.logMessage(log, "Reseting log file location.")
-        where = 0
+        log_file.seek(0, 0)
         count = 0
         WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   except:
