@@ -1,6 +1,8 @@
 #!/usr/bin/python2.7
 
 #Python modules
+from signal import signal, SIGTERM
+import atexit
 import argparse
 import os
 import sys
@@ -22,6 +24,8 @@ seen_messages_file = base_folder + "seen_messages"
 tweet_history = 1000
 #Number of tweets to send during each pass
 tweet_volume = 1
+#Time in seconds between log read resets
+reset_time = 3600
 
 #Parse Command Line Arguments
 parser = argparse.ArgumentParser(description='Process command line flags.')
@@ -71,7 +75,8 @@ def ReadFileData(target_file_name):
         file_contents.add(line.encode('utf-8').replace('\n', ''))
     target_file.close()
   except:
-    logger.logMessage(log, "Unspecified error processing %s" % target_file_name)
+    logger.logMessage(log, "WARNING: Unspecified error processing %s" %
+        target_file_name)
   return file_contents
 
 
@@ -106,7 +111,7 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
   seen_messages = ReadFileData(seen_messages_file)
   #Open log file for reading
   log_file = open(log_file_name, 'r')
-  count = 0
+  start_time = time.time()
   try:
     while 1:
       where = log_file.tell()
@@ -121,15 +126,14 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
             message_queue.write(line)
           seen_messages.add(line)
           logger.logMessage(log, "Message submitted to tweet queue.")
-      count += 1
       #Reset read position every hour to catch log rollover
-      if count > 3600:
+      if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "Reseting log file location.")
         log_file.seek(0, 0)
-        count = 0
+        start_time = time.time()
         WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   except:
-    logger.logMessage(log, "Error detected while reading messages.")
+    logger.logMessage(log, "WARNING: Error detected while reading messages.")
   #Write state data and close log file on exit
   WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   log_file.close()
@@ -156,7 +160,23 @@ def TweetDeathMessages(queue_file_name, num_tweets):
   WriteFileData(queue_file_name, tweet_list, 0)
 
 
+def Cleanup():
+  """pid file cleanup for abnormal script termination.
+
+  Called with no arguments, removes pid file when script is abnormally
+  terminated.
+  """
+  logger.logMessage(log, "WARNING: Abnormal termination detected.")
+  try:
+    os.unlink(pidfile)
+    logger.logMessage(log, "pid file successfully removed.")
+  except:
+    logger.logMessage(log, "WARNING: Unable to remove pid file.")
+
+
 if __name__ == "__main__":
+  #Setup cleanup process and signal interrupt
+  signal(SIGTERM, lambda signum, stack_frame: exit(1))
   if args.read_messages:
     #read_messages code path
     #Set pid details
@@ -165,14 +185,14 @@ if __name__ == "__main__":
     #Verify script is not already running
     if os.path.isfile(pidfile):
       logger.logMessage(log, "%s exists, exiting." % pidfile)
-      sys.exit()
     else:
       #Set pid file
       file(pidfile, 'w').write(pid)
+      #Set cleanup for abnormal termination
+      atexit.register(Cleanup)
       logger.logMessage(log, "Reading messages from log to queue.")
       ReadDeathMessagesFromLog(mc_log, msg_queue_file, death_messages_file,
           seen_messages_file)
-    os.unlink(pidfile)
   if args.tweet_messages:
     #tweet_messages code path
     logger.logMessage(log, "Attempting to Tweet %s message(s) from queue." %
