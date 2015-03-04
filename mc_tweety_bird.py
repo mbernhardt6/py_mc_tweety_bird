@@ -121,13 +121,13 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
         time.sleep(1)
         log_file.seek(where)
       else:
+        read_count += 1
         if (not StringInSet(line, seen_messages)
             and StringInSet(line, death_messages)):
           with open(queue_file_name, 'a') as message_queue:
             message_queue.write(line)
           seen_messages.add(line)
           logger.logMessage(log, "Message submitted to tweet queue.")
-          read_count += 1
       #Reset read position every hour to catch log rollover
       if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "Reseting log file location. %s line(s) read." %
