@@ -112,6 +112,7 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
   #Open log file for reading
   log_file = open(log_file_name, 'r')
   start_time = time.time()
+  read_count = 0
   try:
     while 1:
       where = log_file.tell()
@@ -126,11 +127,14 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
             message_queue.write(line)
           seen_messages.add(line)
           logger.logMessage(log, "Message submitted to tweet queue.")
+          read_count += 1
       #Reset read position every hour to catch log rollover
       if ((time.time() - start_time) > reset_time):
-        logger.logMessage(log, "Reseting log file location.")
+        logger.logMessage(log, "Reseting log file location. %s line(s) read." %
+            read_count)
         log_file.seek(0, 0)
         start_time = time.time()
+        read_count = 0
         WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   except:
     logger.logMessage(log, "WARNING: Error detected while reading messages.")
