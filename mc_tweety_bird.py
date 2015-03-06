@@ -1,33 +1,34 @@
 #!/usr/bin/python2.7
+# TODO: Still doesn't catch log rollover correctly
 
-#Python modules
+# Python modules
 from signal import signal, SIGTERM
 import atexit
 import argparse
 import os
 import sys
 import time
-#Homegrown modules
+# Homegrown modules
 import filer
 import logger
 import tweeter
 
-#Variables
+# Variables
 log = "/var/log/mc_tweety_bird.log"
 mc_log = "/var/games/minecraft/servers/one/logs/latest.log"
 base_folder = "/home/mc/python/"
 msg_queue_file = base_folder + "msg_queue"
 death_messages_file = base_folder + "death_messages.txt"
 seen_messages_file = base_folder + "seen_messages"
-#Number of death messages to keep in state
-#Should hold more than you would expect to happen on a single log iteration
+# Number of death messages to keep in state
+# Should hold more than you would expect to happen on a single log iteration
 tweet_history = 1000
-#Number of tweets to send during each pass
+# Number of tweets to send during each pass
 tweet_volume = 1
-#Time in seconds between log read resets
+# Time in seconds between log read resets
 reset_time = 3600
 
-#Parse Command Line Arguments
+# Parse Command Line Arguments
 parser = argparse.ArgumentParser(description='Process command line flags.')
 parser.add_argument('--read_messages',
                     dest='read_messages',
@@ -106,10 +107,10 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
     death_messages: Set of messages to look for.
     seen_messages: Set of messages to filter against to avoid repeats.
   """
-  #Read filter and state data
+  # Read filter and state data
   death_messages = ReadFileData(death_messages_file)
   seen_messages = ReadFileData(seen_messages_file)
-  #Open log file for reading
+  # Open log file for reading
   log_file = open(log_file_name, 'r')
   start_time = time.time()
   read_count = 0
@@ -128,17 +129,19 @@ def ReadDeathMessagesFromLog(log_file_name, queue_file_name,
             message_queue.write(line)
           seen_messages.add(line)
           logger.logMessage(log, "Message submitted to tweet queue.")
-      #Reset read position every hour to catch log rollover
+      # Reset read position every hour to catch log rollover
       if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "Reseting log file location. %s line(s) read." %
             read_count)
+        log_file.close()
+        log_file = open(log_file_name, 'r')
         log_file.seek(0, 0)
         start_time = time.time()
         read_count = 0
         WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   except:
     logger.logMessage(log, "WARNING: Error detected while reading messages.")
-  #Write state data and close log file on exit
+  # Write state data and close log file on exit
   WriteFileData(seen_messages_file, sorted(seen_messages), tweet_history)
   log_file.close()
 
@@ -153,9 +156,9 @@ def TweetDeathMessages(queue_file_name, num_tweets):
   tweet_list = sorted(ReadFileData(queue_file_name))
   for x in range(0, num_tweets):
     try:
-      #Read message and remove from queue
+      # Read message and remove from queue
       raw_message = tweet_list.pop(0)
-      #Format message for tweet
+      # Format message for tweet
       message = raw_message.split('[Server thread/INFO]:')[1].strip()
       tweeter.SendTweet(message)
       logger.logMessage(log, "Update sent to Tweeter.")
@@ -179,26 +182,24 @@ def Cleanup():
 
 
 if __name__ == "__main__":
-  #Setup cleanup process and signal interrupt
+  # Setup signal interrupt
   signal(SIGTERM, lambda signum, stack_frame: exit(1))
   if args.read_messages:
-    #read_messages code path
-    #Set pid details
+    # read_messages code path
+    # Set pid details
     pid = str(os.getpid())
     pidfile = "/tmp/tweetybird.pid"
-    #Verify script is not already running
+    # Verify script is not already running
     if os.path.isfile(pidfile):
       logger.logMessage(log, "%s exists, exiting." % pidfile)
     else:
-      #Set pid file
+      # Set pid file
       file(pidfile, 'w').write(pid)
-      #Set cleanup for abnormal termination
+      # Set cleanup for abnormal termination
       atexit.register(Cleanup)
       logger.logMessage(log, "Reading messages from log to queue.")
       ReadDeathMessagesFromLog(mc_log, msg_queue_file, death_messages_file,
           seen_messages_file)
   if args.tweet_messages:
-    #tweet_messages code path
-    logger.logMessage(log, "Attempting to Tweet %s message(s) from queue." %
-        tweet_volume)
+    # tweet_messages code path
     TweetDeathMessages(msg_queue_file, tweet_volume)
