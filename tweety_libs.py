@@ -1,4 +1,5 @@
 # Python modules
+import glob
 import os
 import sys
 # Homegrown modules
@@ -17,8 +18,9 @@ def StringInSet(test_string, test_set):
     Boolean if one of set is found or not.
   """
   for item in test_set:
-    if item in test_string:
-      return True
+    if len(item) > 0:
+      if item in test_string:
+        return True
   return False
 
 
@@ -97,3 +99,24 @@ def Cleanup(thread_name, pid_file, log):
   except:
     logger.logMessage(log, "WARNING: Unable to remove %s pid file." %
         thread_name)
+
+
+def VerifyPids(pid_base, log):
+  """Find pid's from pid_files and check if processes are still running.
+
+  Remove pid_files for any processes that are no longer active.
+
+  Args:
+    pid_base: Path and beginning of pid_file used in setting pid_files.
+    log: Log file location.
+  """
+  pid_wildcard = pid_base + "_*.pid"
+  for pid_file in glob.glob(pid_wildcard):
+    pid = ReadFileData(pid_file, log)
+    try:
+      os.getpgid(int(list(pid)[0]))
+    except:
+      try:
+        os.unlink(pid_file)
+      except:
+        pass

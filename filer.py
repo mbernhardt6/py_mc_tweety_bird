@@ -20,7 +20,8 @@ def tailFile(filename, tailCount):
     oldFile.close()
     newFile = open(filename, 'wb')
     for line in arrOutFile:
-      newFile.write(line)
+      if len(line) > 0:
+        newFile.write(line)
     newFile.close()
   else:
     oldFile.close()
