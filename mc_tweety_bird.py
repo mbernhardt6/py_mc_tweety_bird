@@ -29,7 +29,7 @@ kept_history = 1000
 # Number of tweets to send during each pass
 tweet_volume = 1
 # Time in seconds between log read resets
-reset_time = 800
+reset_time = 900
 
 # Parse Command Line Arguments
 parser = argparse.ArgumentParser(description='Process command line flags.')

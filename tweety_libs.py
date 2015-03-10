@@ -63,7 +63,7 @@ def WriteFileData(target_file_name, file_contents, line_count):
 
 
 def SetPid(thread_name, pid_base, log):
-  """Function to handle cehcking and setting pid files.
+  """Function to handle checking and setting pid files.
 
   If pid file doesn't exist this function will set it and return the path to the
   parent script. If the pid file already exists this function will exit out of
