@@ -51,7 +51,7 @@ parser.add_argument('--tweet_messages',
                     action = 'store_true',
                     default = False,
                     help = 'Flag to Tweet messages from queue.')
-parser.add_argument('--mail_message',
+parser.add_argument('--mail_messages',
                     dest = 'mail_messages',
                     action = 'store_true',
                     default = False,
@@ -250,8 +250,9 @@ def SendSummaryMail(mail_queue_file_name):
   """
   timestamp = logger.GetTimeStamp()
   message_list = tweety_libs.ReadFileData(mail_queue_file_name, log)
-  mailer.sendMessage(recipient, sender, "Daily MC Log Summary: %s" % timestamp,
-      message_list)
+  if len(message_list) > 0:
+    mailer.sendMessage(recipient, sender, "Daily MC Log Summary: %s" % timestamp,
+        message_list)
   tweety_libs.WriteFileData(mail_queue_file_name, None, 0)
 
 
