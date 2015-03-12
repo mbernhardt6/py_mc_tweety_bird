@@ -1,4 +1,12 @@
 def countLines(filename):
+  """Count the number of lines in a file.
+
+  Args:
+    filename: File to count lines of.
+
+  Returns:
+    Int value of the number of lines in a file.
+  """
   try:
     with open(filename, 'r') as file:
       for i, l in enumerate(file):
@@ -9,6 +17,12 @@ def countLines(filename):
     return 0
 
 def tailFile(filename, tailCount):
+  """Trim a file to a set line count via tail.
+
+  Args:
+    filename: Name of file to trim.
+    tailCount: Number of lines to trim to.
+  """
   length = countLines(filename)
   oldFile = open(filename, 'r')
   start = length - (int(tailCount) + 1)
