@@ -118,7 +118,7 @@ def ReadMessagesFromLog(watch_file_name, tweet_queue_file_name,
               thread_name)
         if (not tweety_libs.StringInSet(line, seen_messages)
             and tweety_libs.StringInSet(line, admin_messages)):
-          with open(mail_queue_file_name) as mail_queue:
+          with open(mail_queue_file_name, 'a') as mail_queue:
             mail_queue.write(line)
           seen_messages.add(line)
           logger.logMessage(log, "%s: Message submitted to mail queue." %
@@ -251,8 +251,8 @@ def SendSummaryMail(mail_queue_file_name):
   timestamp = logger.GetTimeStamp()
   message_list = tweety_libs.ReadFileData(mail_queue_file_name, log)
   if len(message_list) > 0:
-    mailer.sendMessage(recipient, sender, "Daily MC Log Summary: %s" % timestamp,
-        message_list)
+    mailer.sendMessage(recipient, sender, "Daily MC Log Summary: %s" %
+        timestamp, message_list)
   tweety_libs.WriteFileData(mail_queue_file_name, None, 0)
 
 
