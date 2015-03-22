@@ -1,4 +1,5 @@
 #!/usr/bin/python2.7
+# TODO: Find ways to avoid sending consecutive verbatim tweets.
 
 # Python modules
 from signal import signal, SIGTERM
@@ -25,6 +26,7 @@ tweet_queue_file_name = base_folder + "tweet_queue"
 mail_queue_file_name = base_folder + "mail_queue"
 death_messages_file_name = base_folder + "death_messages.txt"
 admin_messages_file_name = base_folder + "admin_messages.txt"
+avoid_messages_file_name = base_folder + "avoid_messages.txt"
 seen_messages_base = base_folder + "seen_messages"
 # /Paths
 # Mailer settings
@@ -61,7 +63,7 @@ args = parser.parse_args()
 
 def ReadMessagesFromLog(watch_file_name, tweet_queue_file_name,
     mail_queue_file_name, death_messages_file_name, admin_messages_file_name,
-    seen_messages_base):
+    avoid_messages_file_name, seen_messages_base):
   """Read Messages from MC Log and write out to queue file(s) based on filters.
 
   Args:
@@ -70,6 +72,7 @@ def ReadMessagesFromLog(watch_file_name, tweet_queue_file_name,
     mail_queue_file_name: File name to write admin messages for mailing.
     death_messages_file_name: Set of death messages to look for.
     admin_messages_file_name: Set of admin messages to look for.
+    avoid_messages_file_name: Content of message to filter against. ie: Chat
     seen_messages_base: Set of messages to filter against to avoid repeats.
   """
   thread_name = "latest"
@@ -87,6 +90,7 @@ def ReadMessagesFromLog(watch_file_name, tweet_queue_file_name,
   admin_messages = tweety_libs.ReadFileData(admin_messages_file_name, log)
   seen_messages_file_name = seen_messages_base + "_" + thread_name
   seen_messages = tweety_libs.ReadFileData(seen_messages_file_name, log)
+  avoid_messages = tweety_libs.ReadFileData(avoid_messages_file_name, log)
 
   # Set cleanup
   atexit.register(tweety_libs.Cleanup, thread_name, pid_file, log)
@@ -109,7 +113,8 @@ def ReadMessagesFromLog(watch_file_name, tweet_queue_file_name,
       else:
         read_count += 1
         if (not tweety_libs.StringInSet(line, seen_messages)
-            and tweety_libs.StringInSet(line, death_messages)):
+            and tweety_libs.StringInSet(line, death_messages)
+            and not tweety_libs.StringInSet(line, avoid_messages)):
           with open(tweet_queue_file_name, 'a') as tweet_queue:
             tweet_queue.write(line.split('[Server thread/INFO]:')[1].strip() +
                 "\n")
@@ -119,7 +124,7 @@ def ReadMessagesFromLog(watch_file_name, tweet_queue_file_name,
         if (not tweety_libs.StringInSet(line, seen_messages)
             and tweety_libs.StringInSet(line, admin_messages)):
           with open(mail_queue_file_name, 'a') as mail_queue:
-            mail_queue.write(line + "\r\n")
+            mail_queue.write(line)
           seen_messages.add(line)
           logger.logMessage(log, "%s: Message submitted to mail queue." %
               thread_name)
@@ -252,8 +257,9 @@ def SendSummaryMail(mail_queue_file_name):
   message_list = tweety_libs.ReadFileData(mail_queue_file_name, log)
   if len(message_list) > 0:
     mailer.sendMail(recipient, sender, "Daily MC Log Summary: %s" %
-        timestamp, message_list)
-  tweety_libs.WriteFileData(mail_queue_file_name, "", 0)
+        timestamp, '\r\n'.join(message_list))
+    logger.logMessage(log, "Admin Mail Sent.")
+    tweety_libs.WriteFileData(mail_queue_file_name, "", 0)
 
 
 if __name__ == "__main__":
@@ -267,7 +273,8 @@ if __name__ == "__main__":
     # Setup threads
     p_latest = multiprocessing.Process(target=ReadMessagesFromLog,
         args=(latest_log, tweet_queue_file_name, mail_queue_file_name,
-        death_messages_file_name, admin_messages_file_name, seen_messages_base))
+        death_messages_file_name, admin_messages_file_name,
+        avoid_messages_file_name, seen_messages_base))
     p_alldeaths = multiprocessing.Process(target=ReadDeathMessageLog,
         args=(death_log, tweet_queue_file_name, seen_messages_base))
 
