@@ -117,6 +117,7 @@ def VerifyPids(pid_base, log):
       os.getpgid(int(list(pid)[0]))
     except:
       try:
+        logger.logMessage(log, "Stale pid: %s" % pid_file)
         os.unlink(pid_file)
       except:
-        pass
+        logger.logMessage(log, "Unable to clear stale pid: %s" % pid_file)
