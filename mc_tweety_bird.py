@@ -1,5 +1,6 @@
 #!/usr/bin/python2.7
 # TODO: Find ways to avoid sending consecutive verbatim tweets.
+# TODO: Add mechanism to trigger end of script execution.
 
 # Python modules
 from signal import signal, SIGTERM
@@ -15,8 +16,9 @@ import tweeter
 import tweety_libs
 
 # Variables
-# Paths
+# Log File
 log = "/var/log/mc_tweety_bird.log"
+# Paths
 mc_path = "/var/games/minecraft/servers/one/"
 latest_log = mc_path + "logs/latest.log"
 death_log = mc_path + "plugins/LogAll/AllDeaths.log"
@@ -25,9 +27,7 @@ base_folder = "/home/mc/python/"
 pid_base = "/tmp/tweetybird"
 tweet_queue_file_name = base_folder + "tweet_queue"
 mail_queue_file_name = base_folder + "mail_queue"
-death_messages_file_name = base_folder + "death_messages.txt"
 admin_messages_file_name = base_folder + "admin_messages.txt"
-avoid_messages_file_name = base_folder + "avoid_messages.txt"
 seen_messages_base = base_folder + "seen_messages"
 # /Paths
 # Mailer settings
@@ -35,10 +35,10 @@ recipient = "mark@transcendedlife.local"
 sender = "mortimer@transcendedlife.local"
 # /Mailer Settings
 # Number of death messages to keep in state
-# Should hold more than you would expect to happen on a single log iteration
 kept_history = 1000
 # Number of tweets to send during each pass
 tweet_volume = 1
+hash_tag = "#YellyMC"
 # Time in seconds between log read resets
 reset_time = 900
 
@@ -83,11 +83,9 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
   logger.logMessage(log, "%s: Starting thread." % thread_name)
 
   # Read filter and state data
-  death_messages = tweety_libs.ReadFileData(death_messages_file_name, log)
   admin_messages = tweety_libs.ReadFileData(admin_messages_file_name, log)
   seen_messages_file_name = seen_messages_base + "_" + thread_name
   seen_messages = tweety_libs.ReadFileData(seen_messages_file_name, log)
-  avoid_messages = tweety_libs.ReadFileData(avoid_messages_file_name, log)
 
   # Set cleanup
   atexit.register(tweety_libs.Cleanup, thread_name, pid_file, log)
@@ -301,7 +299,7 @@ def TweetDeathMessages(tweet_queue_file_name, num_tweets):
     try:
       # Read message and remove from queue
       message = tweet_list.pop(0)
-      tweeter.SendTweet(message)
+      tweeter.SendTweet("%s %s" % (message, hash_tag))
       logger.logMessage(log, "\"%s\" sent to Tweeter." % message)
     except:
       pass
