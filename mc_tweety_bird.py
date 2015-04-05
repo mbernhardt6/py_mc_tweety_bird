@@ -1,12 +1,12 @@
 #!/usr/bin/python2.7
 # TODO: Find ways to avoid sending consecutive verbatim tweets.
-# TODO: Add mechanism to trigger end of script execution.
 
 # Python modules
 from signal import signal, SIGTERM
 import argparse
 import atexit
 import multiprocessing
+import os
 import sys
 import time
 # Homegrown modules
@@ -25,6 +25,7 @@ death_log = mc_path + "plugins/LogAll/AllDeaths.log"
 playerdeath_log = mc_path + "plugins/LogAll/PlayerDeaths.log"
 base_folder = "/home/mc/python/"
 pid_base = "/tmp/tweetybird"
+recycle_file = base_folder + "recycle"
 tweet_queue_file_name = base_folder + "tweet_queue"
 mail_queue_file_name = base_folder + "mail_queue"
 admin_messages_file_name = base_folder + "admin_messages.txt"
@@ -40,7 +41,7 @@ kept_history = 1000
 tweet_volume = 1
 hash_tag = "#YellyMC"
 # Time in seconds between log read resets
-reset_time = 900
+reset_time = 300
 
 # Parse Command Line Arguments
 parser = argparse.ArgumentParser(description = 'Process command line flags.')
@@ -125,10 +126,11 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
+        # Check for recycle file
+        if (os.path.isfile(recycle_file)):
+          break
   except KeyboardInterrupt:
-    tweety_libs.WriteFileData(seen_messages_file_name, sorted(seen_messages),
-        kept_history)
-    tweety_libs.Cleanup(thread_name, pid_file, log)
+    logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
   except Exception as e:
     logger.logMessage(log, "WARNING: %s: %s" % (thread_name, e))
 
@@ -136,6 +138,7 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
   tweety_libs.WriteFileData(seen_messages_file_name, sorted(seen_messages),
       kept_history)
   watch_file.close()
+  tweety_libs.Cleanup(thread_name, pid_file, log)
 
 
 def ReadDeathMessageLog(watch_file_name, tweet_queue_file_name,
@@ -201,10 +204,11 @@ def ReadDeathMessageLog(watch_file_name, tweet_queue_file_name,
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
+        # Check for recycle file
+        if (os.path.isfile(recycle_file)):
+          break
   except KeyboardInterrupt:
-    tweety_libs.WriteFileData(seen_messages_file_name, sorted(seen_messages),
-        kept_history)
-    tweety_libs.Cleanup(thread_name, pid_file, log)
+    logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
   except Exception as e:
     logger.logMessage(log, "WARNING: %s: %s" % (thread_name, e))
 
@@ -212,6 +216,7 @@ def ReadDeathMessageLog(watch_file_name, tweet_queue_file_name,
   tweety_libs.WriteFileData(seen_messages_file_name, sorted(seen_messages),
       kept_history)
   watch_file.close()
+  tweety_libs.Cleanup(thread_name, pid_file, log)
 
 
 def ReadPlayerDeathsLog(watch_file_name, tweet_queue_file_name,
@@ -274,10 +279,11 @@ def ReadPlayerDeathsLog(watch_file_name, tweet_queue_file_name,
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
+        # Check for recycle file
+        if (os.path.isfile(recycle_file)):
+          break
   except KeyboardInterrupt:
-    tweety_libs.WriteFileData(seen_messages_file_name, sorted(seen_messages),
-        kept_history)
-    tweety_libs.Cleanup(thread_name, pid_file, log)
+    logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
   except Exception as e:
     logger.logMessage(log, "WARNING: %s: %s" % (thread_name, e))
 
@@ -285,6 +291,7 @@ def ReadPlayerDeathsLog(watch_file_name, tweet_queue_file_name,
   tweety_libs.WriteFileData(seen_messages_file_name, sorted(seen_messages),
       kept_history)
   watch_file.close()
+  tweety_libs.Cleanup(thread_name, pid_file, log)
 
 
 def TweetDeathMessages(tweet_queue_file_name, num_tweets):
@@ -326,6 +333,10 @@ if __name__ == "__main__":
   signal(SIGTERM, lambda signum, stack_frame: exit(1))
   if args.read_messages:
     # read_messages code path
+    # Remove recycle file if it exists
+    if (os.path.isfile(recycle_file)):
+      os.remove(recycle_file)
+
     # Verify existing pid files
     tweety_libs.VerifyPids(pid_base, log)
 
