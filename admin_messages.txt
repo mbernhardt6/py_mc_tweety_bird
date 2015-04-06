@@ -3,5 +3,4 @@
 [Server thread/WARN]:
 You are not white-listed on this server!
 Authentication servers are down. Please try again later, sorry!
-Can't keep up! Did the system time change, or is the server overloaded?
 [ServerThread/INFO]: [MobileAdmin] root

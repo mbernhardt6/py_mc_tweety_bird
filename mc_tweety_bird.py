@@ -36,7 +36,7 @@ recipient = "mark@transcendedlife.local"
 sender = "mortimer@transcendedlife.local"
 # /Mailer Settings
 # Number of death messages to keep in state
-kept_history = 1000
+kept_history = 200
 # Number of tweets to send during each pass
 tweet_volume = 1
 hash_tag = "#YellyMC"
@@ -128,6 +128,7 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
             sorted(seen_messages), kept_history)
         # Check for recycle file
         if (os.path.isfile(recycle_file)):
+          logger.logMessage(log, "Recycle file detected: %s" % thread_name)
           break
   except KeyboardInterrupt:
     logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
@@ -206,6 +207,7 @@ def ReadDeathMessageLog(watch_file_name, tweet_queue_file_name,
             sorted(seen_messages), kept_history)
         # Check for recycle file
         if (os.path.isfile(recycle_file)):
+          logger.logMessage(log, "Recycle file detected: %s" % thread_name)
           break
   except KeyboardInterrupt:
     logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
@@ -281,6 +283,7 @@ def ReadPlayerDeathsLog(watch_file_name, tweet_queue_file_name,
             sorted(seen_messages), kept_history)
         # Check for recycle file
         if (os.path.isfile(recycle_file)):
+          logger.logMessage(log, "Recycle file detected: %s" % thread_name)
           break
   except KeyboardInterrupt:
     logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
@@ -335,7 +338,11 @@ if __name__ == "__main__":
     # read_messages code path
     # Remove recycle file if it exists
     if (os.path.isfile(recycle_file)):
-      os.remove(recycle_file)
+      logger.logMessage(log, "Removing recycle file.")
+      try:
+        os.remove(recycle_file)
+      except:
+        logger.logMessage(log, "WARNING: Unable to remove recycle file.")
 
     # Verify existing pid files
     tweety_libs.VerifyPids(pid_base, log)
