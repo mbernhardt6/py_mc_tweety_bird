@@ -326,7 +326,7 @@ def SendSummaryMail(mail_queue_file_name):
   message_list = tweety_libs.ReadFileData(mail_queue_file_name, log)
   if len(message_list) > 0:
     mailer.sendMail(recipient, sender, "Daily MC Log Summary: %s" %
-        timestamp, '\r\n'.join(message_list))
+        timestamp, '\r\n'.join(sorted(message_list)))
     logger.logMessage(log, "Admin Mail Sent.")
     tweety_libs.WriteFileData(mail_queue_file_name, "", 0)
 
