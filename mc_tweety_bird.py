@@ -97,6 +97,7 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
   watch_file = open(watch_file_name, 'r')
   start_time = time.time()
   read_count = 0
+  last_read = 0
 
   # Start listening
   try:
@@ -115,14 +116,19 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
           seen_messages.add(line)
           logger.logMessage(log, "%s: Message submitted to mail queue." %
               thread_name)
-      # Reset read position every hour to catch log rollover
+      # Reset read position to catch log rollover
       if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "%s: Reseting log file location. %s lines read."
             % (thread_name, read_count))
         watch_file.close()
+        if read_count < last_read:
+          logger.logMessage(log, "Suspect %s log roll. Blanking seen messages."
+              % thread_name)
+          tweety_libs.WriteFileData(seen_messages, "", 0)
         watch_file = open(watch_file_name, 'r')
         watch_file.seek(0, 0)
         start_time = time.time()
+        last_read = read_count
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
@@ -194,7 +200,7 @@ def ReadDeathMessageLog(watch_file_name, tweet_queue_file_name,
             seen_messages.add(line)
             logger.logMessage(log, "%s: Message submitted to tweet queue." %
                 thread_name)
-      # Reset read position every hour to catch log rollover
+      # Reset read position to catch log rollover
       if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "%s: Reseting log file location. %s lines read."
             % (thread_name, read_count))
@@ -270,7 +276,7 @@ def ReadPlayerDeathsLog(watch_file_name, tweet_queue_file_name,
           seen_messages.add(line)
           logger.logMessage(log, "%s: Message submitted to tweet queue." %
               thread_name)
-      # Reset read position every hour to catch log rollover
+      # Reset read position to catch log rollover
       if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "%s: Reseting log file location. %s lines read."
             % (thread_name, read_count))
