@@ -132,10 +132,10 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
-        # Check for recycle file
-        if (os.path.isfile(recycle_file)):
-          logger.logMessage(log, "Recycle file detected: %s" % thread_name)
-          break
+      # Check for recycle file
+      if (os.path.isfile(recycle_file)):
+        logger.logMessage(log, "Recycle file detected: %s" % thread_name)
+        break
   except KeyboardInterrupt:
     logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
   except Exception as e:
@@ -211,10 +211,10 @@ def ReadDeathMessageLog(watch_file_name, tweet_queue_file_name,
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
-        # Check for recycle file
-        if (os.path.isfile(recycle_file)):
-          logger.logMessage(log, "Recycle file detected: %s" % thread_name)
-          break
+      # Check for recycle file
+      if (os.path.isfile(recycle_file)):
+        logger.logMessage(log, "Recycle file detected: %s" % thread_name)
+        break
   except KeyboardInterrupt:
     logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
   except Exception as e:
@@ -287,10 +287,10 @@ def ReadPlayerDeathsLog(watch_file_name, tweet_queue_file_name,
         read_count = 0
         tweety_libs.WriteFileData(seen_messages_file_name,
             sorted(seen_messages), kept_history)
-        # Check for recycle file
-        if (os.path.isfile(recycle_file)):
-          logger.logMessage(log, "Recycle file detected: %s" % thread_name)
-          break
+      # Check for recycle file
+      if (os.path.isfile(recycle_file)):
+        logger.logMessage(log, "Recycle file detected: %s" % thread_name)
+        break
   except KeyboardInterrupt:
     logger.logMessage(log, "Keyboard Interrupt Detected. %s" % thread_name)
   except Exception as e:
