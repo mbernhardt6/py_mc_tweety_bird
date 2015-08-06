@@ -124,7 +124,7 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
         if read_count < last_read:
           logger.logMessage(log, "Suspect %s log roll. Blanking seen messages."
               % thread_name)
-          tweety_libs.WriteFileData(seen_messages, "", 0)
+          seen_messages.clear()
         watch_file = open(watch_file_name, 'r')
         watch_file.seek(0, 0)
         start_time = time.time()
