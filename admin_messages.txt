@@ -4,3 +4,7 @@
 You are not white-listed on this server!
 Authentication servers are down. Please try again later, sorry!
 [ServerThread/INFO]: [MobileAdmin] root
+logged in with entity id
+[Server thread/INFO]: Starting minecraft server
+issued server command
+was denied access to command.
