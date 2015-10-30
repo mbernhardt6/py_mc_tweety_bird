@@ -17,13 +17,13 @@ import tweety_libs
 
 # Variables
 # Log File
-log = "/var/log/mc_tweety_bird.log"
+log = "/home/minecraft/scripts/mc_tweety_bird/mc_tweety_bird.log"
 # Paths
-mc_path = "/var/games/minecraft/servers/one/"
+mc_path = "/home/minecraft/"
 latest_log = mc_path + "logs/latest.log"
 death_log = mc_path + "plugins/LogAll/AllDeaths.log"
 playerdeath_log = mc_path + "plugins/LogAll/PlayerDeaths.log"
-base_folder = "/home/mc/python/"
+base_folder = "/home/minecraft/scripts/mc_tweety_bird/"
 pid_base = "/tmp/tweetybird"
 recycle_file = base_folder + "recycle"
 tweet_queue_file_name = base_folder + "tweet_queue"
@@ -32,8 +32,8 @@ admin_messages_file_name = base_folder + "admin_messages.txt"
 seen_messages_base = base_folder + "seen_messages"
 # /Paths
 # Mailer settings
-recipient = "mark@transcendedlife.local"
-sender = "mortimer@transcendedlife.local"
+recipient = "mbernhardt6@gmail.com"
+sender = "mbernhardt6@gmail.com"
 # /Mailer Settings
 # Number of death messages to keep in state
 kept_history = 200
