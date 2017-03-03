@@ -27,8 +27,10 @@ base_folder = "/home/minecraft/scripts/mc_tweety_bird/"
 pid_base = "/tmp/tweetybird"
 recycle_file = base_folder + "recycle"
 tweet_queue_file_name = base_folder + "tweet_queue"
-mail_queue_file_name = base_folder + "mail_queue"
+admin_queue_file_name = base_folder + "admin_queue"
+mod_queue_file_name = base_folder + "mod_queue"
 admin_messages_file_name = base_folder + "admin_messages.txt"
+mod_messages_file_name = base_folder + "mod_messages.txt"
 seen_messages_base = base_folder + "seen_messages"
 # /Paths
 # Mailer settings
@@ -55,22 +57,33 @@ parser.add_argument('--tweet_messages',
                     action = 'store_true',
                     default = False,
                     help = 'Flag to Tweet messages from queue.')
-parser.add_argument('--mail_messages',
-                    dest = 'mail_messages',
+parser.add_argument('--admin_messages',
+                    dest = 'admin_messages',
                     action = 'store_true',
                     default = False,
-                    help = 'Flag to mail messages from queue.')
+                    help = 'Flag to mail admin messages from queue.')
+parser.add_argument('--mod_messages',
+                    dest = 'mod_messages',
+                    action = 'store_true',
+                    default = False,
+                    help = 'Flag to mail mod messages from queue.')
 args = parser.parse_args()
 
 
-def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
-    admin_messages_file_name, seen_messages_base):
+def ReadMessagesFromLog(watch_file_name,
+                        mail_queue_file_name,
+                        mod_queue_file_name,
+                        admin_messages_file_name,
+                        mod_messages_file_name,
+                        seen_messages_base):
   """Read Messages from MC Log and write out to queue file(s) based on filters.
 
   Args:
     watch_file_name: File name to read messages from.
     mail_queue_file_name: File name to write admin messages for mailing.
+    mod_queue_file_name: File name to write mod messages for mailing.
     admin_messages_file_name: Set of admin messages to look for.
+    mod_messages_file_name: Set of mod messages to look for.
     seen_messages_base: Set of messages to filter against to avoid repeats.
   """
   thread_name = "latest"
@@ -85,6 +98,7 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
 
   # Read filter and state data
   admin_messages = tweety_libs.ReadFileData(admin_messages_file_name, log)
+  mod_messages = tweety_libs.ReadFileData(mod_messages_file_name, log)
   seen_messages_file_name = seen_messages_base + "_" + thread_name
   seen_messages = tweety_libs.ReadFileData(seen_messages_file_name, log)
 
@@ -109,13 +123,19 @@ def ReadMessagesFromLog(watch_file_name, mail_queue_file_name,
         watch_file.seek(where)
       else:
         read_count += 1
-        if (not tweety_libs.StringInSet(line, seen_messages)
-            and tweety_libs.StringInSet(line, admin_messages)):
-          with open(mail_queue_file_name, 'a') as mail_queue:
-            mail_queue.write(line)
-          seen_messages.add(line)
-          logger.logMessage(log, "%s: Message submitted to mail queue." %
-              thread_name)
+        if not tweety_libs.StringInSet(line, seen_messages):
+          if tweety_libs.StringInSet(line, admin_messages):
+            with open(mail_queue_file_name, 'a') as mail_queue:
+              mail_queue.write(line)
+            seen_messages.add(line)
+            logger.logMessage(log, "%s: Message submitted to admin mail queue." %
+                thread_name)
+          if tweety_libs.StringInSet(line, mod_messages):
+            with open(mod_queue_file_name, 'a') as mod_queue:
+              mod_queue.write(line)
+            seen_messages.add(line)
+            logger.logMessage(log, "%s: Message submitted to mod mail queue." %
+                thread_name)
       # Reset read position to catch log rollover
       if ((time.time() - start_time) > reset_time):
         logger.logMessage(log, "%s: Reseting log file location. %s lines read."
@@ -322,18 +342,23 @@ def TweetDeathMessages(tweet_queue_file_name, num_tweets):
   tweety_libs.WriteFileData(tweet_queue_file_name, tweet_list, 0)
 
 
-def SendSummaryMail(mail_queue_file_name):
+def SendSummaryMail(mail_queue_file_name, mail_type):
   """Mail administrative messages gathered from log files.
 
   Args:
     mail_queue_file_name: File to pull messages from.
+    mail_type: Type of mail being sent.
   """
   timestamp = logger.GetTimeStamp()
   message_list = tweety_libs.ReadFileData(mail_queue_file_name, log)
   if len(message_list) > 0:
-    mailer.sendMail(recipient, sender, "Daily MC Log Summary: %s" %
-        timestamp, '\r\n'.join(sorted(message_list)))
-    logger.logMessage(log, "Admin Mail Sent.")
+    if mail_type == 'admin':
+      subject = ("MC Admin Log Summary: %s" % timestamp)
+    else:
+      subject = ("MC Mod Message: %s" % timestamp)
+    mailer.sendMail(recipient, sender, subject,
+                    '\r\n'.join(sorted(message_list)))
+    logger.logMessage(log, "%s Mail Sent." % mail_type)
     tweety_libs.WriteFileData(mail_queue_file_name, "", 0)
 
 
@@ -355,12 +380,23 @@ if __name__ == "__main__":
 
     # Setup threads
     p_latest = multiprocessing.Process(target=ReadMessagesFromLog,
-        args=(latest_log, mail_queue_file_name, admin_messages_file_name,
-        seen_messages_base))
+        args=(latest_log,
+              admin_queue_file_name,
+              mod_queue_file_name,
+              admin_messages_file_name,
+              mod_messages_file_name,
+              seen_messages_base)
+        )
     p_alldeaths = multiprocessing.Process(target=ReadDeathMessageLog,
-        args=(death_log, tweet_queue_file_name, seen_messages_base))
+        args=(death_log,
+              tweet_queue_file_name,
+              seen_messages_base)
+        )
     p_playerdeaths = multiprocessing.Process(target=ReadPlayerDeathsLog,
-        args=(playerdeath_log, tweet_queue_file_name, seen_messages_base))
+        args=(playerdeath_log,
+              tweet_queue_file_name,
+              seen_messages_base)
+        )
 
     # Start threads
     p_latest.start()
@@ -370,9 +406,14 @@ if __name__ == "__main__":
   if args.tweet_messages:
     # tweet_messages code path
     TweetDeathMessages(tweet_queue_file_name, tweet_volume)
-  if args.mail_messages:
-    # mail_messages code path
-    SendSummaryMail(mail_queue_file_name)
-  if (not args.read_messages and not args.tweet_messages and not
-      args.mail_messages):
+  if args.admin_messages:
+    # admin_messages code path
+    SendSummaryMail(admin_queue_file_name, 'admin')
+  if args.mod_messages:
+    # mod_messages code path
+    SendSummaryMail(mod_queue_file_name, 'mod')
+  if (not args.read_messages
+      and not args.tweet_messages
+      and not args.admin_messages
+      and not args.mod_messages):
     print "No flags declared."

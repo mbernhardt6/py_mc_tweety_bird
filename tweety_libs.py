@@ -37,8 +37,9 @@ def ReadFileData(target_file_name, log):
   try:
     target_file = open(target_file_name, 'r')
     for line in target_file:
-      if line.encode('utf-8')[:1] != '#':
-        file_contents.add(line.encode('utf-8').replace('\n', ''))
+      string = line.decode('unicode_escape').encode('ascii','ignore')
+      if string.encode('utf-8')[:1] != '#':
+        file_contents.add(string.encode('utf-8').replace('\n', ''))
     target_file.close()
   except:
     logger.logMessage(log, "WARNING: Unspecified error processing %s" %
