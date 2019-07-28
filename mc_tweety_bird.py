@@ -31,6 +31,7 @@ admin_queue_file_name = base_folder + "admin_queue"
 mod_queue_file_name = base_folder + "mod_queue"
 admin_messages_file_name = base_folder + "admin_messages.txt"
 mod_messages_file_name = base_folder + "mod_messages.txt"
+excluded_messages_file_name = base_folder + "excluded_messages.txt"
 seen_messages_base = base_folder + "seen_messages"
 # /Paths
 # Mailer settings
@@ -41,7 +42,7 @@ sender = "mbernhardt6@gmail.com"
 kept_history = 200
 # Number of tweets to send during each pass
 tweet_volume = 1
-hash_tag = "#YellyMC"
+hash_tag = ""
 # Time in seconds between log read resets
 reset_time = 300
 
@@ -75,6 +76,7 @@ def ReadMessagesFromLog(watch_file_name,
                         mod_queue_file_name,
                         admin_messages_file_name,
                         mod_messages_file_name,
+                        excluded_messages_file_name,
                         seen_messages_base):
   """Read Messages from MC Log and write out to queue file(s) based on filters.
 
@@ -84,6 +86,7 @@ def ReadMessagesFromLog(watch_file_name,
     mod_queue_file_name: File name to write mod messages for mailing.
     admin_messages_file_name: Set of admin messages to look for.
     mod_messages_file_name: Set of mod messages to look for.
+    excluded_messages_file_name: Set of messsages to ignore.
     seen_messages_base: Set of messages to filter against to avoid repeats.
   """
   thread_name = "latest"
@@ -99,6 +102,7 @@ def ReadMessagesFromLog(watch_file_name,
   # Read filter and state data
   admin_messages = tweety_libs.ReadFileData(admin_messages_file_name, log)
   mod_messages = tweety_libs.ReadFileData(mod_messages_file_name, log)
+  excluded_messages = tweety_libs.ReadFileData(excluded_messages_file_name, log)
   seen_messages_file_name = seen_messages_base + "_" + thread_name
   seen_messages = tweety_libs.ReadFileData(seen_messages_file_name, log)
 
@@ -123,7 +127,8 @@ def ReadMessagesFromLog(watch_file_name,
         watch_file.seek(where)
       else:
         read_count += 1
-        if not tweety_libs.StringInSet(line, seen_messages):
+        if ((not tweety_libs.StringInSet(line, seen_messages)) and
+            (not tweety_libs.StringInSet(line.lower(), excluded_messages))):
           if tweety_libs.StringInSet(line, admin_messages):
             with open(mail_queue_file_name, 'a') as mail_queue:
               mail_queue.write(line)
@@ -385,6 +390,7 @@ if __name__ == "__main__":
               mod_queue_file_name,
               admin_messages_file_name,
               mod_messages_file_name,
+              excluded_messages_file_name,
               seen_messages_base)
         )
     p_alldeaths = multiprocessing.Process(target=ReadDeathMessageLog,
@@ -400,8 +406,9 @@ if __name__ == "__main__":
 
     # Start threads
     p_latest.start()
-    p_alldeaths.start()
-    p_playerdeaths.start()
+    # Tweeting functionality is turned off.
+    # p_alldeaths.start()
+    # p_playerdeaths.start()
 
   if args.tweet_messages:
     # tweet_messages code path
